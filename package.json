@@ -1,0 +1,9 @@
+{
+  "name": "splitspace",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "vite build", "lint": "eslint .", "test": "vitest run" },
+  "dependencies": { "@vitejs/plugin-react": "latest", "lucide-react": "latest", "react": "latest", "react-dom": "latest", "react-router-dom": "latest", "recharts": "latest" },
+  "devDependencies": { "eslint": "latest", "@eslint/js": "latest", "eslint-plugin-react-hooks": "latest", "eslint-plugin-react-refresh": "latest", "vitest": "latest", "jsdom": "latest", "vite": "latest" }
+}
