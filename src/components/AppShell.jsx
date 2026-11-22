@@ -47,9 +47,14 @@ export default function AppShell({ children, data, unread = 0, theme, setTheme, 
   const navigate = useNavigate();
   const storageWarning = useSyncExternalStore(subscribeStorageWarning, getStorageWarning, getStorageWarning);
 
+  // Strict Demo Admin Access Control:
+  // Only the predefined Demo Admin account (admin@splitspace.demo) possesses admin privileges
+  const isAdmin = Boolean(
+    data.user?.email === 'admin@splitspace.demo' || data.user?.role === 'admin'
+  );
+
   const isAdminSection = location.pathname.startsWith('/admin');
-  const userRole = data.user?.role || 'user';
-  const showAdminNav = isAdminSection || userRole === 'admin';
+  const showAdminNav = isAdmin && isAdminSection;
   const currentNav = showAdminNav ? adminNav : userNav;
 
   const currentNavItem = currentNav.find((item) =>
@@ -65,12 +70,13 @@ export default function AppShell({ children, data, unread = 0, theme, setTheme, 
   const closeNav = () => setOpen(false);
 
   const toggleRole = () => {
+    if (!isAdmin) return;
     closeNav();
-    const nextRole = showAdminNav ? 'user' : 'admin';
+    const nextSection = showAdminNav ? 'user' : 'admin';
     if (onSwitchRole) {
-      onSwitchRole(nextRole);
+      onSwitchRole(nextSection);
     }
-    navigate(nextRole === 'admin' ? '/admin' : '/dashboard');
+    navigate(nextSection === 'admin' ? '/admin' : '/dashboard');
   };
 
   const handleLogout = () => {
@@ -92,19 +98,22 @@ export default function AppShell({ children, data, unread = 0, theme, setTheme, 
             <span>{showAdminNav ? 'SPLITSPACE ADMIN' : 'SPLITSPACE'}</span>
           </Link>
 
+          {/* Role badge and switcher: STRICTLY restricted to Demo Admin account */}
           <div className="role-indicator-badge">
             <span className={`role-pill ${showAdminNav ? 'admin' : 'user'}`}>
               {showAdminNav ? 'Admin Portal' : 'Member Workspace'}
             </span>
-            <button
-              type="button"
-              className="role-switch-btn"
-              onClick={toggleRole}
-              title={`Switch to ${showAdminNav ? 'User Workspace' : 'Admin Portal'}`}
-            >
-              <ArrowLeftRight size={13} />
-              <span>{showAdminNav ? 'Switch to User' : 'Switch to Admin'}</span>
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                className="role-switch-btn"
+                onClick={toggleRole}
+                title={`Switch to ${showAdminNav ? 'User Workspace' : 'Admin Portal'}`}
+              >
+                <ArrowLeftRight size={13} />
+                <span>{showAdminNav ? 'Switch to User' : 'Switch to Admin'}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -127,11 +136,12 @@ export default function AppShell({ children, data, unread = 0, theme, setTheme, 
         </nav>
 
         <div className="sidebar-bottom">
-          {!showAdminNav && (
+          {/* Admin console link in sidebar: ONLY rendered if user is Admin */}
+          {isAdmin && !showAdminNav && (
             <NavLink onClick={closeNav} to="/admin" className="admin-demo-link">
               <ShieldCheck size={18} />
               <span>Admin Console</span>
-              <span className="mini-badge">Demo</span>
+              <span className="mini-badge">Admin</span>
             </NavLink>
           )}
 
@@ -140,7 +150,7 @@ export default function AppShell({ children, data, unread = 0, theme, setTheme, 
               <Avatar member={data.user} small />
               <div className="user-profile-meta">
                 <strong>{data.user.name}</strong>
-                <small>{data.user.email || 'Local demo account'}</small>
+                <small>{data.user.email || 'Local user'}</small>
               </div>
             </div>
             <button
@@ -158,6 +168,7 @@ export default function AppShell({ children, data, unread = 0, theme, setTheme, 
 
       {open && (
         <button
+          type="button"
           className="sidebar-scrim"
           aria-label="Close navigation"
           onClick={closeNav}
@@ -182,15 +193,22 @@ export default function AppShell({ children, data, unread = 0, theme, setTheme, 
           </div>
 
           <div className="topbar-actions">
-            <button
-              type="button"
-              className="topbar-role-pill"
-              onClick={toggleRole}
-              title={`Click to switch to ${showAdminNav ? 'User Workspace' : 'Admin Console'}`}
-            >
-              <span className={`status-dot ${showAdminNav ? 'admin' : 'user'}`} />
-              <span>{showAdminNav ? 'Admin' : 'User'}</span>
-            </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                className="topbar-role-pill"
+                onClick={toggleRole}
+                title={`Click to switch to ${showAdminNav ? 'User Workspace' : 'Admin Console'}`}
+              >
+                <span className={`status-dot ${showAdminNav ? 'admin' : 'user'}`} />
+                <span>{showAdminNav ? 'Admin' : 'User'}</span>
+              </button>
+            ) : (
+              <span className="topbar-member-badge">
+                <span className="status-dot user" />
+                <span>Member</span>
+              </span>
+            )}
 
             <button
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}

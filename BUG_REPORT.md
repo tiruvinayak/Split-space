@@ -1,38 +1,53 @@
-# SplitSpace Comprehensive Bug & Defect Report
+# SplitSpace Bug & Issue Resolution Report
 
-This report catalogs all identified defects, inconsistencies, usability barriers, and functional gaps in SplitSpace, along with their resolution details and verification evidence.
-
----
-
-## Defect Inventory & Resolution Matrix
-
-| Bug ID | Severity | Area | Problem Description | Resolution Details | Status |
-|---|---|---|---|---|---|
-| **SS-01** | Critical | Financial Engine | Unsafe integer values, floating point rounding drift, and invalid percentages were not properly validated. | Re-engineered `src/utils/splitEngine.js` using strict integer paise math and largest-remainder algorithm for remainder allocations. | **FIXED / PASS** (13 tests pass) |
-| **SS-02** | Critical | Admin Portal | Admin dashboard was inaccessible, missing explicit routes, and had no demo login credentials. | Created dedicated `/admin/*` routes (`/admin`, `/admin/users`, `/admin/groups`, `/admin/expenses`, `/admin/settlements`, `/admin/reports`), added 1-click Demo Admin login, and wired role-aware navigation. | **FIXED / PASS** (Tested & browser verified) |
-| **SS-03** | High | Groups & Members | Group detail merged all information; member removal, invitation management, and duplicate member prevention were missing. | Restructured Group Detail into 6 dedicated tabs (Overview, Members, Expenses, Balances, Settlements, Activity); added member removal, simulated invites, and duplicate member validation. | **FIXED / PASS** (Integration tests pass) |
-| **SS-04** | High | Expense Form | Expense creation included all members without participant selection; lacked step-by-step guidance or live mathematical preview. | Built a 6-step guided wizard explaining group, details, payer, amount, participants, and split methods with real-time live preview box in exact paise. | **FIXED / PASS** (Integration tests pass) |
-| **SS-05** | High | Dashboard | Dashboard metrics and charts were hard-coded static numbers rather than aggregating real state. | Rewrote dashboard metrics and charts to derive from real workspace state. Added contextual empty states with action triggers. | **FIXED / PASS** (Integration tests pass) |
-| **SS-06** | High | Settlements | Settlements were recorded as immediately settled without pending workflow or balance recalculation. | Created a 2-stage settlement lifecycle (Pending → Confirmed), debt simplification, and balance updates upon settlement confirmation. | **FIXED / PASS** (Integration tests pass) |
-| **SS-07** | Medium | Local Storage | Storage deserialization lacked schema guards and could fail silently on quota limits. | Implemented schema guards, fallback to seed data on corrupt JSON, automatic admin seed repair, and visible quota warning banners. | **FIXED / PASS** (6 storage tests pass) |
-| **SS-08** | Medium | Multi-Currency | Application only supported INR without currency customization. | Added multi-currency engine in `src/utils/money.js` supporting INR (₹), USD ($), EUR (€), and GBP (£) with instant site-wide recalculation. | **FIXED / PASS** (Tested in settings flow) |
-| **SS-09** | Medium | UI Formatting | MetricCard was formatting count numbers as currency paise, rendering "₹0" for counts like Total Groups and Local Members. | Added `isMoney={false}` prop in `MetricCard` to display integer counts cleanly as numbers while formatting financial metrics in the configured currency. | **FIXED / PASS** (Identified in browser QA & resolved) |
-| **SS-10** | Medium | Mobile Layout | Demo accounts grid on login page overflowed horizontally past 375px viewport boundary. | Added responsive media query at `max-width: 600px` to stack `.demo-accounts-grid` into a single column. | **FIXED / PASS** (Identified in browser QA & resolved) |
-| **SS-11** | Medium | Mobile Tables | Wide data tables in Admin and Group Details were expanding mobile pages horizontally. | Added `.table-responsive` styling with `overflow-x: auto` and `-webkit-overflow-scrolling: touch` to contain wide tables. | **FIXED / PASS** (Identified in browser QA & resolved) |
-| **SS-12** | Low | Accessibility | Modals did not support keyboard Escape dismissal or focus trapping. | Added keyboard Escape handlers, backdrop click listeners, and focus restoration to `Modal.jsx`. | **FIXED / PASS** (Verified in DOM tests) |
-| **SS-13** | Critical | Admin Navigation | Clicking admin sidebar items updated the highlighted tab but kept the page content stuck on Admin Overview due to React reconciler reusing component state. | Split Admin into 7 standalone route components in `src/pages/AdminPages.jsx` (`AdminOverviewPage`, `AdminUsersPage`, `AdminGroupsPage`, `AdminExpensesPage`, `AdminSettlementsPage`, `AdminReportsPage`, `AdminSettingsPage`) and registered individual routes in `App.jsx`. Added `NotFoundPage` wildcard. | **FIXED / PASS** (Automated & visual verification) |
-| **SS-14** | Critical | UI / CSS | Member avatars showing initials (AM, LM, ZH) were stretched into distorted ovals under flex and grid layouts. | Enforced strict circular avatar styles in `Avatar.jsx` and `polish.css`: `width: 38px !important; height: 38px !important; aspect-ratio: 1 / 1 !important; flex-shrink: 0 !important; border-radius: 50% !important;` with centered initials. | **FIXED / PASS** (Verified in visual inspect) |
-| **SS-15** | High | Financial Transparency | Confusing labels ("You paid: ₹846, Your share: ₹212") failed to explain upfront payments vs. personal liability vs. what others owe. | Updated `ExpenseRow` with explicit labels ("Amount paid by you", "Your personal share", "Others owe you" / "You owe") and added an interactive expandable "How is this calculated? ▼" itemized breakdown in integer paise. | **FIXED / PASS** (Verified in tests & browser) |
-| **SS-16** | High | Group Management | Group Detail page merged all items in an unstructured column with limited member audit. | Re-architected Group Detail into 6 dedicated tabs: Overview, Members, Expenses, Balances, Settlements, Activity. Added member directory with Role, Status, Amount Paid Upfront, Personal Share, and Net Balance; duplicate member prevention; and simulated invitations note. | **FIXED / PASS** (Verified in tests & browser) |
-| **SS-17** | High | Settlements UI | User settlements page lacked peer-to-peer clarity, KPI summaries, and payment cancellation actions. | Redesigned to **Settle Up** with 3 KPI cards (You Owe, You Are Owed, Completed Settlements), plain-language notices ("Leo marked ₹500 as paid to you..."), prominent green "Confirm payment" and "Reject Payment" buttons, and Settle Up modal. | **FIXED / PASS** (Integration tests pass) |
-| **SS-18** | Medium | Role Switching | Toggling roles from AppShell topbar toggled state without calling `navigate()`, causing route desync. | Updated `toggleRole` in `AppShell.jsx` to programmatically call `navigate(nextRole === 'admin' ? '/admin' : '/dashboard')`. | **FIXED / PASS** (Verified in browser flow) |
+This document records the critical issues, architecture flaws, visual regressions, and security boundary problems identified and resolved during the SplitSpace upgrades.
 
 ---
 
-## Regression & Verification Summary
+## Issue Resolution Index
 
-All 18 identified defects have been completely fixed and validated with automated regression test suites:
-- **`npm run lint`**: Clean pass (0 errors, 0 warnings).
-- **`npm test`**: Clean pass across all 7 test files (57 tests passed, 0 failures).
-- **`npm run build`**: Production build succeeds in 364ms with no oversized chunk warnings.
-- **Headless Browser Visual Inspection**: Executed real browser testing on `http://127.0.0.1:4173` across desktop (1440x900, 1024x768) and mobile (375x667, 375x812) viewports.
+| Bug ID | Severity | Category | Description | Root Cause | Resolution | Status |
+|---|---|---|---|---|---|---|
+| **SS-19** | **Critical** | Data Privacy | New user registration displayed demo data (Goa escape, Maple house, etc.) | Single shared monolithic Local Storage key (`splitspace-data-v1`) used for all users without account scoping. | Implemented user-scoped storage architecture: `splitspace-workspace-<userId>`. New accounts receive clean empty arrays (`groups: []`, `expenses: []`, `settlements: []`). | **RESOLVED** |
+| **SS-20** | **Critical** | Access Control | Any user could access `/admin/*` and toggle role to admin | Lack of route-level authorization guards; unrestricted `role-switch-btn` rendered for all users. | Added `adminShell` route guard redirecting non-admins to `/dashboard`. Hidden admin links and persona toggles for normal users. Restricted admin to `admin@splitspace.demo`. | **RESOLVED** |
+| **SS-21** | **High** | Auth UI/UX | Outdated, cluttered login/register forms with no password toggles or strength indicator | Single-column form without fintech visual identity, inline validation, or password inspection. | Redesigned auth pages with 2-column layout, `PasswordInput` with eye toggle, dynamic password strength meter, duplicate email detection, and recovery simulation. | **RESOLVED** |
+| **SS-22** | **High** | Data Integrity | Registering duplicate email overwrote existing account records | Missing duplicate check in registration handler. | Added `findUserByEmail` verification in `registerUser` with user-friendly error banner. | **RESOLVED** |
+| **SS-13** | **Critical** | Navigation | Admin sidebar navigation stuck on Admin Overview | Reconciler reusing mounted component instance with internal `useState`. | Extracted 7 dedicated admin page components in `AdminPages.jsx` registered to distinct React Router routes. | **RESOLVED** |
+| **SS-14** | **Critical** | UI/Visual | Profile avatars distorted into stretched ovals under flex/grid containers | Missing strict aspect ratio and flex shrinkage restrictions. | Enforced `aspect-ratio: 1 / 1 !important`, `flex-shrink: 0 !important`, `border-radius: 50% !important`, equal width/height in `Avatar.jsx` and CSS. | **RESOLVED** |
+| **SS-15** | **High** | UI/Financial | Confusing expense explanations ("You paid: ₹846, Your share: ₹212") | Ambiguous labels and missing participant allocation breakdown. | Implemented explicit labels (**Amount paid by you**, **Your personal share**, **Others owe you**) and interactive **How is this calculated? ▼** audit breakdown. | **RESOLVED** |
+| **SS-16** | **High** | Architecture | Cluttered single-column Group Detail page | All group details crammed into one unorganized page. | Structured Group Detail into 6 dedicated tabs: Overview, Members, Expenses, Balances, Settlements, Activity with financial member table. | **RESOLVED** |
+| **SS-17** | **High** | Usability | Confusing settlement page without plain-language notices | Raw settlement logs without peer-to-peer notices or rejection options. | Redesigned into **Settle Up** with 3 KPI cards, plain notices ("Leo marked ₹500 as paid..."), confirm/reject buttons, and Record Payment modal. | **RESOLVED** |
+| **SS-18** | **Medium** | Navigation | Role switcher toggle did not navigate URL | `onSwitchRole` updated state but did not call `navigate()`. | Updated `toggleRole` in `AppShell.jsx` to call `navigate(nextRole === 'admin' ? '/admin' : '/dashboard')`. | **RESOLVED** |
+
+---
+
+## Detailed Root Cause Analysis for Upgrades
+
+### SS-19: New User Registration Data Leakage
+- **Symptom**: When a user registered a new profile (e.g. `vinayak@example.com`), they opened the app to find 3 active groups ("Goa escape", "Maple house", "Sunday football") and 5 historical expenses totaling ₹3,049.
+- **Root Cause**: The application previously utilized a single monolithic key `splitspace-data-v1` in `localStorage`. Registering a user simply altered `data.user` while retaining the shared `data.groups` and `data.expenses` arrays.
+- **Remediation**:
+  1. Engineered user-scoped storage partitions: `splitspace-workspace-<userId>`.
+  2. Implemented `registerUser({ name, email, password })` generating unique user IDs (`user_${timestamp}_${random}`) and initializing empty collections: `groups: []`, `expenses: []`, `settlements: []`, `notifications: []`, `recurringExpenses: []`, `invitations: []`.
+  3. Scoped `getData(userEmailOrId)` to load exclusively from the authenticated user's workspace key.
+  4. Preserved Demo User Aarav Mehta's seeded demo records in `splitspace-workspace-me`.
+
+### SS-20: Unrestricted Admin Console Access
+- **Symptom**: Any regular user could click "Switch to Admin" or type `/admin` into the address bar to view the Admin Console, inspect platform users, modify roles, and export CSVs.
+- **Root Cause**: Route definitions in `App.jsx` lacked authorization checks, and `AppShell.jsx` unconditionally displayed the role switcher button to all users.
+- **Remediation**:
+  1. Implemented strict authorization rule: `isAdmin = authenticated && (data.user?.email === 'admin@splitspace.demo' || data.user?.role === 'admin')`.
+  2. Wrapped all 7 `/admin/*` routes in `adminShell`, redirecting unauthorized users directly to `/dashboard`.
+  3. Completely hid the "Admin Console Demo" link and `role-switch-btn` from normal users.
+  4. Excluded role selectors from the registration form; all new accounts are strictly assigned role `'user'`.
+
+### SS-21: Outdated Authentication UI & UX
+- **Symptom**: The login and register views felt like an unpolished school project without visual hierarchy, password inspection tools, password strength feedback, or brand storytelling.
+- **Root Cause**: Simple raw form inputs without dedicated component encapsulation or fintech styling.
+- **Remediation**:
+  1. Built modern two-column layout (`.auth-page-container`) with brand value showcase on the left and elevated auth card on the right.
+  2. Created `PasswordInput.jsx` with show/hide password toggle (Eye and EyeOff icons).
+  3. Added live password strength calculation with 4-bar progress indicator and color transitions.
+  4. Added live password matching validation between password and confirm password fields.
+  5. Built `DemoAccountsExpandable.jsx` providing 1-click persona sign-in cards for Demo User and Demo Admin.
+  6. Added dedicated simulated account recovery page at `/forgot-password`.

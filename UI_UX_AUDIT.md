@@ -1,76 +1,141 @@
-# SplitSpace UI/UX Audit & Visual Design Review
+# SplitSpace UI/UX Audit & Design System Evaluation
 
-## Visual System & Design Architecture
+## 1. Executive Summary & Design Philosophy
 
-The SplitSpace user interface was completely redesigned following modern fintech design principles inspired by Stripe, Ramp, and Linear. The goal was to eliminate visual clutter, establish clear visual hierarchies, and provide intuitive interactions while maintaining high usability for first-time users.
+SplitSpace has been elevated from a cluttered, confusing prototype into a modern, fintech-grade application inspired by the usability, clarity, and visual discipline of industry leaders such as Stripe, Ramp, and Linear.
 
-### Design Tokens & Aesthetics
-- **Theme**: Light-default fintech palette with clean neutral slate backgrounds (`--bg: #f8fafc`, `--surface: #ffffff`), refined border lines (`--line: #e2e8f0`), and subtle layered box shadows.
-- **Dark Mode**: Fully supported via CSS variables with deep navy surfaces (`--bg: #090e1c`, `--surface: #111827`) and high-contrast text (`--text: #f8fafc`).
-- **Brand & Accent Colors**: Disciplined violet primary (`#7c3aed`), emerald positive/credit (`#10b981`), amber pending/warning (`#f59e0b`), and rose debt/negative (`#ef4444`).
-- **Typography**: Clean system font stack (`Inter`, system-ui, -apple-system, sans-serif) with tabular numbers for financial columns. All external font dependencies were removed to prevent network delays and layout shifts.
-- **Strict Circular Avatars**: Standardized on perfect circular profile avatars with `aspect-ratio: 1 / 1 !important`, `flex-shrink: 0 !important`, `border-radius: 50% !important`, equal width/height, and centered initials, permanently eliminating distorted horizontal or vertical ovals.
+The interface prioritizes:
+- **Clean Visual Hierarchy**: High-contrast typography, disciplined spacing, and purposeful color accents.
+- **Cognitive Clarity**: Eliminating ambiguous financial jargon in favor of self-explanatory labels and interactive breakdowns.
+- **Data Isolation & Privacy**: Brand transparency assuring users that their private workspace is isolated and preserved locally in browser storage.
+- **Role Scoping**: Clean separation between Member Workspace and Admin Console, with all admin controls hidden from regular users.
+- **Responsive Fluidity**: Pixel-perfect layout adaptation across desktop (1440px), laptop (1024px), tablet (768px), and mobile (375px) viewports.
 
 ---
 
-## Key UI/UX Improvements by Phase
+## 2. Authentication UI Redesign (Login, Register, Recovery)
 
-### 1. Navigation & Shell Layout
-- **Dedicated Route Navigation**: Admin navigation routes (`/admin`, `/admin/users`, `/admin/groups`, `/admin/expenses`, `/admin/settlements`, `/admin/reports`, `/admin/settings`) each mount dedicated page components, ensuring clicking sidebar items immediately renders the corresponding view without remaining stuck on Admin Overview.
-- **Role-Aware Sidebar**: Clean desktop sidebar with distinct icons, active indicators, and explicit badge counts.
-- **Mobile Drawer Navigation**: Hamburger menu trigger in topbar opens a full-height navigation drawer with an accessible dark scrim backdrop (`.sidebar-scrim`).
-- **Transparent Role Switching**: Interactive pill button ("Switch to Admin" / "Switch to User") in both sidebar and topbar updates role state and navigates automatically between `/admin` and `/dashboard`.
-- **404 Handling**: Dedicated fallback page with a clear explanation and return navigation.
-- **Profile & Logout Card**: Docked at the bottom of the sidebar with user avatar, name, email, and one-click logout.
+### 2.1 Two-Column Desktop Architecture
+The authentication experience (`/login`, `/register`, `/forgot-password`) features a balanced 2-column layout:
+- **Left Column: Brand Showcase Panel**:
+  - Dark radial gradient `#2e1065` to `#060913` with subtle glowing orb effect.
+  - Brand mark: Stylized S-badge with purple-to-indigo gradient and drop shadow.
+  - Headline: *"Shared expenses. Clear relationships."* with multi-color gradient typography.
+  - Subtitle: *"Bring your groups, expenses and balances together in one simple workspace."*
+  - 3 Value proposition cards with dedicated Lucide icons:
+    - **Instant Fair Calculations** (Exact paise-level integer precision with zero rounding disputes).
+    - **Full Visibility & Control** (Transparent group ledgers, receipt proof, and graph-simplified settlements).
+    - **Private Local Workspace** (Your financial records stay isolated and securely stored in your browser).
+  - Abstract CSS Fintech Visual Card: Simulated transaction notification with avatar stack, status badge, progress bar, and "+₹6,300 owed to you" callout.
+  - Bottom footnote: *"© 2026 SplitSpace · High-fidelity local fintech architecture"*.
+- **Right Column: Authentication Form Card**:
+  - Clean card container with `max-width: 440px`, subtle border, and elevation shadow.
+  - Back to home link (`← Back to home`).
+  - Clear eyebrow (`WELCOME BACK` / `START FRESH` / `ACCOUNT RECOVERY`), primary title, and explanatory subtitle.
 
-### 2. User Dashboard
-- **Hierarchy of Information**: Begins with a personalized greeting, current month tag, and quick primary actions ("My Groups", "Add Expense").
-- **4 Key Summary Cards**:
-  - `TOTAL YOU OWE`: Highlighted with warning tone; explains debt across all groups.
-  - `TOTAL YOU ARE OWED`: Highlighted with positive tone; explains receivable amounts.
-  - `TOTAL GROUPS`: Clear integer count with group circle status.
-  - `TOTAL EXPENSES`: Clear integer count of shared transactions.
-- **Visual Analytics**: Interactive monthly spending trend line chart and category distribution donut chart.
-- **Actionable Groups & Activity**: Group cards display category badges, member avatars, and net balance position with direct "Open Group" buttons.
+### 2.2 Reusable PasswordInput with Visibility Toggle
+- Integrated lock icon on the left edge.
+- Show/Hide eye button on the right edge with accessible `aria-label` (`"Show password"` / `"Hide password"`).
+- Keyboard-accessible tab navigation and smooth state toggling between `type="password"` and `type="text"`.
 
-### 3. Group Management Experience
-- **Dedicated My Groups Page**: Displays total groups, unique member counts (with a helpful note clarifying memberships vs unique people), group spending, and pending settlements.
-- **Create Group Wizard**: Clean modal with name, category selector, description, and multi-member selection checkboxes with instant persistence.
-- **6-Tab Group Detail Page**:
-  1. *Overview*: Group totals, member avatars, recent group expenses, and quick action buttons ("Add expense", "Settle up", "Invite member").
-  2. *Members*: Comprehensive member directory table with circular avatars, full name, email, group role, membership status, amount paid upfront, personal share, net balance, and remove actions.
-  3. *Expenses*: Searchable and filterable list of group expenses with interactive calculation breakdowns.
-  4. *Balances*: Group-specific debt breakdown with direct "Settle Up" action.
-  5. *Settlements*: Group-specific settlement history with pending payment confirmations and cancellations.
-  6. *Activity*: Chronological audit trail of group events.
+### 2.3 Interactive Password Strength Meter
+- Dynamically evaluated during registration across length, mixed casing, numbers, and symbols.
+- 4-bar progress indicator with color transitions:
+  - Score 1: Red (`#ef4444`) — Weak password
+  - Score 2: Amber (`#f59e0b`) — Fair password
+  - Score 3: Blue (`#3b82f6`) — Good password
+  - Score 4: Emerald (`#10b981`) — Strong password
+- Accessible `aria-live="polite"` feedback for screen readers.
 
-### 4. Transparent Financial Explanations
-- **Clear Amount Labels**: Eliminated ambiguous phrasing. Replaced with explicit terms:
-  - **Amount paid by you**: Upfront amount funded for the expense.
-  - **Your personal share**: Your calculated personal liability.
-  - **Others owe you** / **You owe**: The net position resulting from the split.
-- **Interactive Calculation Breakdown ("How is this calculated? ▼")**: An expandable details card itemizing:
-  - Total expense amount.
-  - Who paid upfront.
-  - User's personal share.
-  - Others' combined shares.
-  - Itemized participant allocations in exact integer paise.
+### 2.4 Inline Validation & Feedback Banners
+- Name input: Minimum 2 characters validation.
+- Email input: Regex validation for proper email format.
+- Password confirmation: Live verification that confirmation password matches primary password.
+- Duplicate email prevention: Clear red alert banner when registering an already-registered email.
+- Data isolation callout: Green reassurance pill: *"Guaranteed Data Isolation: Your new workspace starts with 0 groups, 0 expenses, and ₹0 balances. No demo data is shared."*
 
-### 5. Redesigned Settlements ("Settle Up")
-- **Clear Page Intent**: Dedicated user page titled **Settle Up** with subtitle "Track money you owe and payments others owe you."
-- **3 KPI Cards**:
-  - `YOU OWE`: Total debt across all groups.
-  - `YOU ARE OWED`: Total receivable payments.
-  - `COMPLETED SETTLEMENTS`: Total confirmed settlements.
-- **Pending Payments**: Plain-language explanations (e.g. "Leo marked ₹500 as paid to you on 12 Nov 2026"), prominent green "Confirm payment" button, and "Reject Payment" button.
-- **Record a Payment Modal**: Direct in-page dialog to record a simulated payment to any member.
+### 2.5 Expandable Demo Accounts Selector
+- Subtle accordion card on Login mode.
+- One-click sign-in for Demo User (`aarav@splitspace.demo`) and Demo Admin (`admin@splitspace.demo`).
+- Preserves exact `.demo-account-btn.user-btn` and `.demo-account-btn.admin-btn` selectors.
 
-### 6. Admin Console Experience
-- **Enterprise Fintech Oversight**: Dedicated `/admin` route with 7 operational KPIs, volume charts, category distributions, workspace member directory, and transaction reports.
-- **Dedicated Subpages**:
-  - `/admin/users`: Registered Users Directory with search, role filters, Add Demo User modal, Edit User modal, promote/demote, and suspend/activate.
-  - `/admin/groups`: Active Sharing Groups ledger with category tags and CSV export.
-  - `/admin/expenses`: Global Expenses ledger with View Split modal and CSV export.
-  - `/admin/settlements`: Platform Settlements oversight with 5 KPI summary cards and audit table.
-  - `/admin/reports`: Platform Reports and Exports with 5 download buttons matching audit criteria.
-  - `/admin/settings`: Administrator Persona card, currency selector, theme toggle, and data reset.
+### 2.6 Account Recovery Simulation
+- Accessible at `/forgot-password` and via the "Forgot password?" link on the login card.
+- Email input with send button and simulated confirmation message.
+
+---
+
+## 3. Strict Avatar Geometry Enforcement
+
+### 3.1 Problem Identified
+Avatars with initials like AM, LM, ZH were distorting into horizontal or vertical ovals under varying container flex, grid, and table layouts.
+
+### 3.2 Solution Implemented
+In `src/components/Avatar.jsx` and `src/styles/polish.css`:
+```css
+.avatar,
+.avatar-small,
+.avatar-large,
+.avatar-image {
+  aspect-ratio: 1 / 1 !important;
+  flex-shrink: 0 !important;
+  border-radius: 50% !important;
+  object-fit: cover;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+}
+.avatar { width: 36px; height: 36px; }
+.avatar-small { width: 28px; height: 28px; }
+.avatar-large { width: 56px; height: 56px; }
+```
+Avatars render as true geometric circles across every browser, OS, and viewport width.
+
+---
+
+## 4. Financial Calculation Clarity & UX
+
+### 4.1 Plain-Language Financial Labels
+Replaced ambiguous labels with explicit descriptions:
+- **Amount paid by you**: Actual cash paid upfront by the current user.
+- **Your personal share**: The user's allocated consumption for this specific transaction.
+- **Others owe you** / **You owe**: Net balance resulting from this transaction before external settlements.
+
+### 4.2 Interactive "How is this calculated? ▼" Breakdown Box
+Clicking the calculation toggle reveals an itemized mathematical audit card:
+- Upfront total amount and payer name.
+- Payer's personal share.
+- Combined share owed by all other participants.
+- Participant breakdown table itemizing exact integer paise amounts for each member.
+
+---
+
+## 5. Navigation & Workspace Role Bifurcation
+
+### 5.1 Member Workspace Navigation
+- Active sidebar items highlighted with purple accent bar and high-contrast icon.
+- Unread notification count badge in nav and topbar.
+- Non-admin users see only Member Workspace links; all admin controls are removed.
+
+### 5.2 Admin Console Navigation
+- Only available to Demo Admin account (`admin@splitspace.demo`).
+- 7 dedicated routes with standalone page components in `AdminPages.jsx`:
+  1. `/admin` — Admin Overview
+  2. `/admin/users` — User Management
+  3. `/admin/groups` — Group Management
+  4. `/admin/expenses` — Expense Monitoring
+  5. `/admin/settlements` — Platform Settlements
+  6. `/admin/reports` — Platform Reports
+  7. `/admin/settings` — Admin Settings
+- Role switcher allows Demo Admin to toggle between Admin Portal and Member Workspace.
+
+---
+
+## 6. Responsive Viewport Adaptability Matrix
+
+| Viewport | Width | Layout Adjustments | Verification Status |
+|---|---|---|---|
+| Desktop Wide | 1440px | 2-column auth layout; 4-card metric grid; side-by-side charts; full sidebar navigation. | PASS |
+| Laptop | 1024px | 2-column auth layout with compact margins; 2-card metric wrap; responsive tables. | PASS |
+| Tablet | 768px | Single-column stacked auth card; slide-over hamburger navigation drawer; stacked metrics. | PASS |
+| Mobile Phone | 375px | Optimized mobile card padding (16px); single-column lists; full-width action buttons; touch targets >= 44px. | PASS |

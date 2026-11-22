@@ -38,25 +38,14 @@ import {
 
 export default function App() {
   const [data, setData] = useState(() => {
-    const raw = getData();
-    const withRecurring = processDueRecurring(raw, new Date().toISOString().slice(0, 10), () => crypto.randomUUID());
+    let session;
     try {
-      const session = localStorage.getItem('splitspace-session');
-      if (session === 'admin@splitspace.demo') {
-        const adminMember = withRecurring.members?.find((m) => m.role === 'admin') || {
-          id: 'admin',
-          name: 'System Admin',
-          email: 'admin@splitspace.demo',
-          initials: 'AD',
-          role: 'admin',
-          status: 'active'
-        };
-        return { ...withRecurring, user: adminMember };
-      }
+      session = localStorage.getItem('splitspace-session');
     } catch {
-      /* ignore */
+      session = null;
     }
-    return withRecurring;
+    const raw = getData(session);
+    return processDueRecurring(raw, new Date().toISOString().slice(0, 10), () => crypto.randomUUID());
   });
 
   const [theme, setThemeState] = useState(getTheme);
@@ -67,6 +56,12 @@ export default function App() {
       return false;
     }
   });
+
+  // Strict Admin Access check: ONLY the predefined Demo Admin possesses admin authority
+  const isAdmin = Boolean(
+    authenticated &&
+      (data.user?.email === 'admin@splitspace.demo' || data.user?.role === 'admin')
+  );
 
   useEffect(() => {
     saveData(data);
@@ -183,37 +178,29 @@ export default function App() {
     }));
   };
 
-  const switchRole = (newRole) => {
-    if (newRole === 'admin') {
-      const adminMember = data.members?.find((m) => m.role === 'admin') || {
-        id: 'admin',
-        name: 'System Admin',
-        email: 'admin@splitspace.demo',
-        initials: 'AD',
-        role: 'admin',
-        status: 'active'
-      };
+  const switchRole = (targetSection) => {
+    if (!isAdmin) return;
+    // Demo admin toggling between admin portal and user workspace
+    if (targetSection === 'admin') {
       try {
         localStorage.setItem('splitspace-session', 'admin@splitspace.demo');
       } catch {
-        /* Local session only */
+        /* ignore */
       }
-      setData((old) => ({ ...old, user: adminMember }));
+      setData((old) => {
+        const adminMember = old.members?.find((m) => m.role === 'admin') || {
+          id: 'admin',
+          name: 'System Admin',
+          email: 'admin@splitspace.demo',
+          initials: 'AD',
+          role: 'admin',
+          status: 'active'
+        };
+        return { ...old, user: adminMember };
+      });
     } else {
-      const userMember = data.members?.find((m) => m.id === 'me') || data.members?.[0] || {
-        id: 'me',
-        name: 'Aarav Mehta',
-        email: 'aarav@splitspace.demo',
-        initials: 'AM',
-        role: 'user',
-        status: 'active'
-      };
-      try {
-        localStorage.setItem('splitspace-session', 'aarav@splitspace.demo');
-      } catch {
-        /* Local session only */
-      }
-      setData((old) => ({ ...old, user: userMember }));
+      // Admin looking at user perspective
+      setData((old) => ({ ...old }));
     }
   };
 
@@ -221,7 +208,7 @@ export default function App() {
     try {
       localStorage.removeItem('splitspace-session');
     } catch {
-      /* Local session only */
+      /* ignore */
     }
     setAuthenticated(false);
   };
@@ -231,48 +218,31 @@ export default function App() {
     try {
       localStorage.setItem('splitspace-session', sessionEmail);
     } catch {
-      /* Local session only */
+      /* ignore */
     }
     setAuthenticated(true);
 
-    if (profile.role === 'admin' || sessionEmail.toLowerCase().includes('admin')) {
-      const adminMember = data.members?.find((m) => m.role === 'admin') || {
-        id: 'admin',
-        name: profile.name || 'System Admin',
-        email: sessionEmail,
-        initials: 'AD',
-        role: 'admin',
-        status: 'active'
-      };
-      setData((old) => ({ ...old, user: adminMember }));
-    } else {
-      const userMember = data.members?.find((m) => m.id === 'me') || data.members?.[0] || {
-        id: 'me',
-        name: profile.name || 'Aarav Mehta',
-        email: sessionEmail,
-        initials: 'AM',
-        role: 'user',
-        status: 'active'
-      };
-      const updatedUser = {
-        ...userMember,
-        name: profile.name || userMember.name,
-        email: profile.email || userMember.email,
-        role: 'user'
-      };
-      saveProfile(updatedUser);
-    }
+    // Retrieve the user's isolated workspace!
+    const userWorkspace = getData(sessionEmail);
+    const withRecurring = processDueRecurring(
+      userWorkspace,
+      new Date().toISOString().slice(0, 10),
+      () => crypto.randomUUID()
+    );
+    setData(withRecurring);
   };
 
   const reset = () => {
-    if (window.confirm('Reset all local Splitspace demo data?')) {
-      setData(resetData());
+    if (window.confirm('Reset current SplitSpace local workspace data?')) {
+      const activeEmail = data.user?.email || localStorage.getItem('splitspace-session');
+      setData(resetData(activeEmail));
     }
   };
 
   const unread = data.notifications.filter((note) => !note.read).length;
 
-  const shell = (content) =>
+  // Protected User Workspace Shell: Redirects to /login if unauthenticated
+  const userShell = (content) =>
     authenticated ? (
       <AppShell
         data={data}
@@ -288,6 +258,30 @@ export default function App() {
       <Navigate to="/login" replace />
     );
 
+  // Protected Admin Shell: Strictly restricted to Demo Admin account!
+  // If not authenticated -> /login
+  // If authenticated but not admin -> /dashboard
+  const adminShell = (content) => {
+    if (!authenticated) {
+      return <Navigate to="/login" replace />;
+    }
+    if (!isAdmin) {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return (
+      <AppShell
+        data={data}
+        unread={unread}
+        theme={theme}
+        setTheme={setThemeState}
+        onSwitchRole={switchRole}
+        logout={logout}
+      >
+        {content}
+      </AppShell>
+    );
+  };
+
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
@@ -295,14 +289,15 @@ export default function App() {
       <Route path="/about" element={<InfoPage type="about" />} />
       <Route path="/login" element={<AuthPage mode="login" onAuthenticate={authenticate} />} />
       <Route path="/register" element={<AuthPage mode="register" onAuthenticate={authenticate} />} />
+      <Route path="/forgot-password" element={<AuthPage mode="forgot" onAuthenticate={authenticate} />} />
 
       {/* User Workspace Routes */}
-      <Route path="/dashboard" element={shell(<Dashboard data={data} addExpense={addExpense} />)} />
-      <Route path="/groups" element={shell(<GroupsPage data={data} setData={setData} />)} />
+      <Route path="/dashboard" element={userShell(<Dashboard data={data} addExpense={addExpense} />)} />
+      <Route path="/groups" element={userShell(<GroupsPage data={data} setData={setData} />)} />
       <Route
         path="/groups/:id"
         element={
-          shell(
+          userShell(
             <GroupDetail
               data={data}
               setData={setData}
@@ -319,7 +314,7 @@ export default function App() {
       <Route
         path="/expenses"
         element={
-          shell(
+          userShell(
             <ExpensesPage
               data={data}
               addExpense={addExpense}
@@ -333,11 +328,11 @@ export default function App() {
           )
         }
       />
-      <Route path="/balances" element={shell(<BalancesPage data={data} settle={settle} />)} />
+      <Route path="/balances" element={userShell(<BalancesPage data={data} settle={settle} />)} />
       <Route
         path="/settlements"
         element={
-          shell(
+          userShell(
             <SettlementsPage
               data={data}
               confirmSettlement={confirmSettlement}
@@ -347,15 +342,15 @@ export default function App() {
           )
         }
       />
-      <Route path="/activity" element={shell(<ActivityPage data={data} />)} />
+      <Route path="/activity" element={userShell(<ActivityPage data={data} />)} />
       <Route
         path="/notifications"
-        element={shell(<NotificationsPage data={data} setData={setData} />)}
+        element={userShell(<NotificationsPage data={data} setData={setData} />)}
       />
       <Route
         path="/settings"
         element={
-          shell(
+          userShell(
             <SettingsPage
               data={data}
               setData={setData}
@@ -370,27 +365,27 @@ export default function App() {
         }
       />
 
-      {/* Admin Console Routes */}
+      {/* Admin Console Routes (Exclusively for Demo Admin) */}
       <Route
         path="/admin"
-        element={shell(<AdminOverviewPage data={data} setData={setData} />)}
+        element={adminShell(<AdminOverviewPage data={data} setData={setData} />)}
       />
       <Route
         path="/admin/users"
-        element={shell(<AdminUsersPage data={data} setData={setData} />)}
+        element={adminShell(<AdminUsersPage data={data} setData={setData} />)}
       />
       <Route
         path="/admin/groups"
-        element={shell(<AdminGroupsPage data={data} setData={setData} />)}
+        element={adminShell(<AdminGroupsPage data={data} setData={setData} />)}
       />
       <Route
         path="/admin/expenses"
-        element={shell(<AdminExpensesPage data={data} setData={setData} />)}
+        element={adminShell(<AdminExpensesPage data={data} setData={setData} />)}
       />
       <Route
         path="/admin/settlements"
         element={
-          shell(
+          adminShell(
             <AdminSettlementsPage
               data={data}
               setData={setData}
@@ -402,12 +397,12 @@ export default function App() {
       />
       <Route
         path="/admin/reports"
-        element={shell(<AdminReportsPage data={data} setData={setData} />)}
+        element={adminShell(<AdminReportsPage data={data} setData={setData} />)}
       />
       <Route
         path="/admin/settings"
         element={
-          shell(
+          adminShell(
             <AdminSettingsPage
               data={data}
               setData={setData}
@@ -421,8 +416,8 @@ export default function App() {
       />
 
       {/* 404 Not Found Page */}
-      <Route path="/404" element={shell(<NotFoundPage role={data.user?.role || 'user'} />)} />
-      <Route path="*" element={shell(<NotFoundPage role={data.user?.role || 'user'} />)} />
+      <Route path="/404" element={userShell(<NotFoundPage role={data.user?.role || 'user'} />)} />
+      <Route path="*" element={userShell(<NotFoundPage role={data.user?.role || 'user'} />)} />
     </Routes>
   );
 }

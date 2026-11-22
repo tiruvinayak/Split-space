@@ -8,4 +8,5 @@ import './styles/layout.css';
 import './styles/components.css';
 import './styles/responsive.css';
 import './styles/polish.css';
+import './styles/auth.css';
 createRoot(document.getElementById('root')).render(<StrictMode><BrowserRouter><App /></BrowserRouter></StrictMode>);

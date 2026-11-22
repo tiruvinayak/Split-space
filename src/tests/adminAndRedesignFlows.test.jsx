@@ -76,9 +76,19 @@ describe('SplitSpace Admin and Redesign Flows', () => {
   });
 
   it('switches persona between Demo User and Demo Admin via role switcher', async () => {
+    // Normal user does not have role switcher button
     await render('/dashboard', true, false);
     expect(host.textContent).toContain('SPLITSPACE');
     expect(host.textContent).toContain('Member Workspace');
+    expect(host.querySelector('.role-switch-btn')).toBeNull();
+
+    await act(async () => root.unmount());
+    root = undefined; host.remove(); host = undefined;
+
+    // Demo Admin has role switcher and can toggle between Admin Portal and Member Workspace
+    await render('/admin', true, true);
+    expect(host.textContent).toContain('SPLITSPACE ADMIN');
+    expect(host.textContent).toContain('Admin Portal');
 
     const switchBtn = host.querySelector('.role-switch-btn');
     expect(switchBtn).not.toBeNull();
@@ -88,10 +98,9 @@ describe('SplitSpace Admin and Redesign Flows', () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    expect(localStorage.getItem('splitspace-session')).toBe('admin@splitspace.demo');
-    expect(host.textContent).toContain('Admin Portal');
+    expect(host.textContent).toContain('Member Workspace');
 
-    // Switch back to user
+    // Switch back to admin
     const switchBackBtn = host.querySelector('.role-switch-btn');
     click(switchBackBtn);
 
@@ -99,8 +108,7 @@ describe('SplitSpace Admin and Redesign Flows', () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    expect(localStorage.getItem('splitspace-session')).toBe('aarav@splitspace.demo');
-    expect(host.textContent).toContain('Member Workspace');
+    expect(host.textContent).toContain('Admin Portal');
   });
 
   it('admin manages users: adds demo user, edits user, and changes role', async () => {

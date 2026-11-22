@@ -38,7 +38,10 @@ function button(label) {
   return match;
 }
 async function render(path, session = true) {
-  if (session) localStorage.setItem('splitspace-session', 'demo');
+  if (session) {
+    const isTargetAdmin = path.startsWith('/admin');
+    localStorage.setItem('splitspace-session', isTargetAdmin ? 'admin@splitspace.demo' : 'demo');
+  }
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   await act(async () => root.render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>));
 }
